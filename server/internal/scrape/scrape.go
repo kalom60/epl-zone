@@ -1,4 +1,4 @@
-package scrapper
+package scrape
 
 import (
 	"encoding/csv"
