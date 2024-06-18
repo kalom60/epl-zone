@@ -31,50 +31,71 @@ var (
 	mu       sync.Mutex
 )
 
-// TODO: Error Handling:
+func Scrapper() error {
 
-func Scrapper() {
+	err := ensureDataDir()
+	if err != nil {
+		return fmt.Errorf("error creating data directory: %v", err)
+	}
 
-    err := ensureDataDir()
-    if err != nil {
-        log.Fatalf("Error ensuring data directory: %v", err)
-    }
+	err = getTeamsUrl()
+	if err != nil {
+		return fmt.Errorf("error fetching teams' URLs: %v", err)
+	}
 
-	getTeamsUrl()
-
+	errCh := make(chan error)
 	var wg sync.WaitGroup
+
 	for _, team := range Teams {
 		wg.Add(1)
 
 		go func(team Team) {
+			defer wg.Done()
 			fmt.Println(team.Name)
+
 			teamName := strings.Split(team.Name, "-Stats")[0]
-			getTeamData(teamName, team.Link)
+			if err := getTeamData(teamName, team.Link); err != nil {
+				errCh <- fmt.Errorf("error scraping team data for %s: %v", teamName, err)
+			}
 		}(team)
 	}
-    wg.Wait()
 
-	removeColumns()
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	for err := range errCh {
+		log.Printf("Error: %v", err)
+		return err
+	}
+
+	err = removeColumns()
+	if err != nil {
+		return fmt.Errorf("error removing columns: %v", err)
+	}
+
+	return nil
 }
 
 func ensureDataDir() error {
-    if _, err := os.Stat(dataDir); os.IsNotExist(err) {
-        err := os.MkdirAll(dataDir, 0755)
-        if err != nil {
-            return fmt.Errorf("Error creating directory: %v", err)
-        }
-    }
+	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
+		err := os.MkdirAll(dataDir, 0755)
+		if err != nil {
+			return fmt.Errorf("Error creating directory: %v", err)
+		}
+	}
 
-    file, err := os.Create(filePath)
-    if err != nil {
-        return fmt.Errorf("Error creating CSV file: %v", err)
-    }
-    defer file.Close()
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("Error creating CSV file: %v", err)
+	}
+	defer file.Close()
 
-    return nil
+	return nil
 }
 
-func getTeamsUrl() {
+func getTeamsUrl() error {
 	c := colly.NewCollector(
 		colly.AllowedDomains("fbref.com"),
 	)
@@ -92,7 +113,11 @@ func getTeamsUrl() {
 		fmt.Println("Visiting", r.URL)
 	})
 
-	c.Visit("https://fbref.com/en/comps/9/Premier-League-Stats")
+	if err := c.Visit("https://fbref.com/en/comps/9/Premier-League-Stats"); err != nil {
+		return fmt.Errorf("error visiting https://fbref.com/en/comps/9/Premier-League-Stats: %v", err)
+	}
+
+	return nil
 }
 
 func filterTeamLink(links *[]string) {
@@ -111,8 +136,10 @@ func filterTeamLink(links *[]string) {
 	}
 }
 
-func getTeamData(teamName, link string) {
+func getTeamData(teamName, link string) error {
 	c := colly.NewCollector(colly.AllowedDomains("fbref.com"))
+
+	var scrapeError error
 
 	c.OnHTML("table.stats_table", func(h *colly.HTMLElement) {
 		if h.Index == targetIndex {
@@ -135,7 +162,9 @@ func getTeamData(teamName, link string) {
 					rows = append(rows, rowData)
 				}
 			})
-			appendToCSV(rows)
+			if err := appendToCSV(rows); err != nil {
+				scrapeError = fmt.Errorf("error appending to CSV: %v", err)
+			}
 			h.Request.Abort()
 		}
 	})
@@ -144,11 +173,17 @@ func getTeamData(teamName, link string) {
 		fmt.Println("Visiting", r.URL)
 	})
 
-	c.Visit(baseURL + link)
+	if err := c.Visit(baseURL + link); err != nil {
+		return fmt.Errorf("error visiting team URL: %v", err)
+	}
+
+	if scrapeError != nil {
+		return scrapeError
+	}
+	return nil
 }
 
-
-func appendToCSV(rows [][]string) {
+func appendToCSV(rows [][]string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -157,7 +192,7 @@ func appendToCSV(rows [][]string) {
 	// Open the CSV file for appending, or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		log.Fatalf("Error opening CSV file: %v", err)
+		return fmt.Errorf("Error opening CSV file: %v", err)
 	}
 	defer file.Close()
 
@@ -169,15 +204,16 @@ func appendToCSV(rows [][]string) {
 	for _, row := range rows {
 		fmt.Printf("Writing row: %v\n", row)
 		if err := writer.Write(row); err != nil {
-			log.Fatalf("Error writing to CSV file: %v", err)
+			return fmt.Errorf("Error writing to CSV file: %v", err)
 		}
 	}
+	return nil
 }
 
-func removeColumns() {
+func removeColumns() error {
 	csvfile, err := os.Open(filePath)
 	if err != nil {
-		log.Fatalf("Could not open the CSV file: %v", err)
+		return fmt.Errorf("Could not open the CSV file: %v", err)
 	}
 	defer csvfile.Close()
 
@@ -186,7 +222,7 @@ func removeColumns() {
 	tempFilePath := filepath.Join(dataDir, "temp_stats.csv")
 	newfile, err := os.Create(tempFilePath)
 	if err != nil {
-		log.Fatalf("Error while creating temporary CSV file: %v", err)
+		return fmt.Errorf("Error while creating temporary CSV file: %v", err)
 	}
 	defer newfile.Close()
 
@@ -199,7 +235,8 @@ func removeColumns() {
 			if err.Error() == "EOF" {
 				break
 			}
-			log.Fatalf("Error reading record from CSV: %v", err)
+            fmt.Println("record with fail", record, len(record))
+			return fmt.Errorf("Error reading record from CSV: %v", err)
 		}
 
 		record = append(record[:20], record[34:]...)
@@ -209,11 +246,13 @@ func removeColumns() {
 		record = append(record[:13], record[14:]...)
 		record = append(record[:14], record[15:]...)
 		if err := w.Write(record); err != nil {
-			log.Fatalf("Error while writing record to CSV: %v", err)
+			return fmt.Errorf("Error while writing record to CSV: %v", err)
 		}
 	}
 
 	if err := os.Rename(tempFilePath, filePath); err != nil {
-		log.Fatalf("Error replacing original CSV file: %v", err)
+		return fmt.Errorf("Error replacing original CSV file: %v", err)
 	}
+
+	return nil
 }
