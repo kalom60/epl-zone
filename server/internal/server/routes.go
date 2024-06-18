@@ -16,6 +16,8 @@ func (s *Server) RegisterRoutes() http.Handler {
     e.GET("/", s.scrapeHandler)
     e.GET("/health", s.healthHandler)
 
+    e.GET("/allplayers", s.playerHandler.GetAllPlayers)
+
     return e
 }
 
