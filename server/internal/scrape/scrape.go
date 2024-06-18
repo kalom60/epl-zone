@@ -1,4 +1,4 @@
-package scrapper
+package scrape
 
 import (
 	"encoding/csv"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/gocolly/colly"
 )
@@ -16,32 +17,61 @@ type Team struct {
 	Link string
 }
 
-var Teams []Team
+const (
+	targetIndex = 0
+	baseURL     = "https://fbref.com"
+)
 
-const targetIndex = 0
+var (
+	Teams    []Team
+	allTeams = make([][]string, 0)
+	header   = true
+	dataDir  = "data"
+	filePath = filepath.Join(dataDir, "stats.csv")
+	mu       sync.Mutex
+)
 
-var allTeams = make([][]string, 0)
-
-var header bool = true
-
-// TODO: improve Code Structure and Readability:
 // TODO: Error Handling:
-// TODO: Optimize CSV Handling:
-// TODO: Use of Go Concurrency:
-// TODO: Refactor Repeated Code:
 
 func Scrapper() {
+
+    err := ensureDataDir()
+    if err != nil {
+        log.Fatalf("Error ensuring data directory: %v", err)
+    }
+
 	getTeamsUrl()
 
+	var wg sync.WaitGroup
 	for _, team := range Teams {
-		fmt.Println(team.Name)
-		teamName := strings.Split(team.Name, "-Stats")[0]
-		getTeamData(teamName, team.Link)
-	}
+		wg.Add(1)
 
-	writeToCSV(allTeams)
+		go func(team Team) {
+			fmt.Println(team.Name)
+			teamName := strings.Split(team.Name, "-Stats")[0]
+			getTeamData(teamName, team.Link)
+		}(team)
+	}
+    wg.Wait()
 
 	removeColumns()
+}
+
+func ensureDataDir() error {
+    if _, err := os.Stat(dataDir); os.IsNotExist(err) {
+        err := os.MkdirAll(dataDir, 0755)
+        if err != nil {
+            return fmt.Errorf("Error creating directory: %v", err)
+        }
+    }
+
+    file, err := os.Create(filePath)
+    if err != nil {
+        return fmt.Errorf("Error creating CSV file: %v", err)
+    }
+    defer file.Close()
+
+    return nil
 }
 
 func getTeamsUrl() {
@@ -81,45 +111,31 @@ func filterTeamLink(links *[]string) {
 	}
 }
 
-func getTeamData(teamName string, link string) {
+func getTeamData(teamName, link string) {
 	c := colly.NewCollector(colly.AllowedDomains("fbref.com"))
 
 	c.OnHTML("table.stats_table", func(h *colly.HTMLElement) {
 		if h.Index == targetIndex {
-			rows := make([]string, 0)
+			rows := [][]string{}
 			isFirstRow := true
 			h.ForEach("tr", func(_ int, row *colly.HTMLElement) {
-				//fmt.Println("tr row colly", row)
-
-				if !isFirstRow {
-					rowData := make([]string, 0)
-					row.ForEach("th, td", func(_ int, cell *colly.HTMLElement) {
-						//fmt.Println("th td cell colly", cell)
-						//fmt.Println("cell", cell.Text)
-						if strings.Contains(cell.Text, "-") {
-							cell.Text = strings.Split(cell.Text, "-")[0]
-						}
-						rowData = append(rowData, strings.ReplaceAll(cell.Text, ",", ""))
-						//fmt.Println("yyyyyyyyyyyyyy", y, "yyyyyyyyyyyyyy")
-					})
-					//fmt.Println("row Data", rowData)
-					if rowData[0] == "Player" && header {
-						rowData = append(rowData, "Team")
-						rows = append(rows, strings.Join(rowData, ","))
-						//fmt.Println("xxxxxxxxxxx", x, "xxxxxxxxxxxxx")
-						header = false
-					}
+				if isFirstRow {
+					isFirstRow = false
+					return
+				}
+				rowData := []string{}
+				row.ForEach("th, td", func(_ int, cell *colly.HTMLElement) {
+					text := strings.Split(cell.Text, "-")[0]
+					rowData = append(rowData, strings.ReplaceAll(text, ",", ""))
+				})
+				if len(rowData) > 0 {
 					if rowData[0] != "Player" {
 						rowData = append(rowData, teamName)
-						rows = append(rows, strings.Join(rowData, ","))
 					}
-				} else {
-					isFirstRow = false
+					rows = append(rows, rowData)
 				}
 			})
-			// fmt.Println("rows", rows)
-			allTeams = append(allTeams, rows)
-
+			appendToCSV(rows)
 			h.Request.Abort()
 		}
 	})
@@ -128,80 +144,76 @@ func getTeamData(teamName string, link string) {
 		fmt.Println("Visiting", r.URL)
 	})
 
-	c.Visit("https://fbref.com" + link)
+	c.Visit(baseURL + link)
+}
 
-	// writeToCSV(allTeams)
+
+func appendToCSV(rows [][]string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	fmt.Printf("Appending %d rows to CSV\n", len(rows))
+
+	// Open the CSV file for appending, or create it if it doesn't exist
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatalf("Error opening CSV file: %v", err)
+	}
+	defer file.Close()
+
+	// Create a new CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush() // Ensure all buffered data is written to the file
+
+	// Write rows to the CSV file
+	for _, row := range rows {
+		fmt.Printf("Writing row: %v\n", row)
+		if err := writer.Write(row); err != nil {
+			log.Fatalf("Error writing to CSV file: %v", err)
+		}
+	}
 }
 
 func removeColumns() {
-	csvfile, err := os.Open("data/stats.csv")
+	csvfile, err := os.Open(filePath)
 	if err != nil {
-		fmt.Println("Could not open the csv file", err)
+		log.Fatalf("Could not open the CSV file: %v", err)
 	}
+	defer csvfile.Close()
 
 	r := csv.NewReader(csvfile)
-	records, err := r.ReadAll()
-	if err != nil {
-		fmt.Println(err)
-	}
 
-	newfile, err := os.Create("data/stats.csv")
+	tempFilePath := filepath.Join(dataDir, "temp_stats.csv")
+	newfile, err := os.Create(tempFilePath)
 	if err != nil {
-		fmt.Println("Error while creating csv file", err)
+		log.Fatalf("Error while creating temporary CSV file: %v", err)
 	}
-
 	defer newfile.Close()
 
 	w := csv.NewWriter(newfile)
 	defer w.Flush()
 
-	for _, record := range records {
+	for {
+		record, err := r.Read()
+		if err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			log.Fatalf("Error reading record from CSV: %v", err)
+		}
+
 		record = append(record[:20], record[34:]...)
 		record = append(record[:7], record[8:]...)
 		record = append(record[:9], record[11:]...)
 		record = append(record[:10], record[11:]...)
 		record = append(record[:13], record[14:]...)
 		record = append(record[:14], record[15:]...)
-
 		if err := w.Write(record); err != nil {
-			fmt.Println("Error while writing record to csv:", err)
-		}
-	}
-}
-
-func writeToCSV(allTeams [][]string) {
-	dataDir := "data"
-
-	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
-		err := os.MkdirAll(dataDir, 0755)
-		if err != nil {
-			log.Fatal("Error creating directory:", err)
+			log.Fatalf("Error while writing record to CSV: %v", err)
 		}
 	}
 
-	filePath := filepath.Join(dataDir, "stats.csv")
-	file, err := os.Create(filePath)
-	if err != nil {
-		log.Fatal("Error creating CSV file:", err)
+	if err := os.Rename(tempFilePath, filePath); err != nil {
+		log.Fatalf("Error replacing original CSV file: %v", err)
 	}
-
-	defer file.Close()
-
-	//file, err := os.Create(fileName + ".csv")
-	//if err != nil {
-	//log.Fatal("Error creating CSV file:", err)
-	//}
-	//defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	for _, rows := range allTeams {
-		for _, row := range rows {
-			writer.Write(strings.Split(row, ","))
-		}
-	}
-
-	fmt.Println(filePath)
-	fmt.Println("Data written to stats.csv")
 }
