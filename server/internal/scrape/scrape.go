@@ -70,11 +70,9 @@ func Scrapper() error {
 
 	err = removeColumns()
 	if err != nil {
-        fmt.Println("5", err)
 		return fmt.Errorf("error removing columns: %v", err)
 	}
 
-    fmt.Println("6")
 	return nil
 }
 
@@ -241,7 +239,6 @@ func removeColumns() error {
 			if err.Error() == "EOF" {
 				break
 			}
-			fmt.Println("1")
 			return fmt.Errorf("Error reading record from CSV: %v", err)
 		}
 
@@ -252,16 +249,13 @@ func removeColumns() error {
 		record = append(record[:13], record[14:]...)
 		record = append(record[:14], record[15:]...)
 		if err := w.Write(record); err != nil {
-			fmt.Println("2")
 			return fmt.Errorf("Error while writing record to CSV: %v", err)
 		}
 	}
 
 	if err := os.Rename(tempFilePath, filePath); err != nil {
-		fmt.Println("3")
 		return fmt.Errorf("Error replacing original CSV file: %v", err)
 	}
 
-	fmt.Println("4")
 	return nil
 }

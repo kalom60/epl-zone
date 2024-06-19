@@ -84,7 +84,6 @@ func (s *service) ConvertCSVToDB() error {
 
 	_, err = s.db.Exec(fmt.Sprintf("COPY players FROM %s DELIMITER ',' CSV HEADER", filePath))
 	if err != nil {
-        fmt.Println("8", err)
 		return err
 	}
 
