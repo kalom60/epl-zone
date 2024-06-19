@@ -82,8 +82,9 @@ func (s *service) ConvertCSVToDB() error {
 		return fmt.Errorf("CSV file %s does not exist", filePath)
 	}
 
-	_, err = s.db.Exec(`COPY player_data FROM 'data/stats.csv' DELIMITER ',' CSV HEADER`)
+	_, err = s.db.Exec(fmt.Sprintf("COPY players FROM %s DELIMITER ',' CSV HEADER", filePath))
 	if err != nil {
+        fmt.Println("8", err)
 		return err
 	}
 

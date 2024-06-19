@@ -41,6 +41,7 @@ func NewServer() (*Server, error) {
 
 	err = scrape.Scrapper()
 	if err != nil {
+        fmt.Println("7", err)
 		return nil, fmt.Errorf("failed to scrape data and save to CSV: %w", err)
 	}
 

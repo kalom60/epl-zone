@@ -24,7 +24,6 @@ const (
 
 var (
 	Teams    []Team
-	allTeams = make([][]string, 0)
 	header   = true
 	dataDir  = "data"
 	filePath = filepath.Join(dataDir, "stats.csv")
@@ -32,7 +31,6 @@ var (
 )
 
 func Scrapper() error {
-
 	err := ensureDataDir()
 	if err != nil {
 		return fmt.Errorf("error creating data directory: %v", err)
@@ -72,9 +70,11 @@ func Scrapper() error {
 
 	err = removeColumns()
 	if err != nil {
+        fmt.Println("5", err)
 		return fmt.Errorf("error removing columns: %v", err)
 	}
 
+    fmt.Println("6")
 	return nil
 }
 
@@ -158,8 +158,14 @@ func getTeamData(teamName, link string) error {
 				if len(rowData) > 0 {
 					if rowData[0] != "Player" {
 						rowData = append(rowData, teamName)
+						rows = append(rows, rowData)
 					}
-					rows = append(rows, rowData)
+
+					if rowData[0] == "Player" && header {
+						rowData = append(rowData, "Team")
+						header = false
+						rows = append(rows, rowData)
+					}
 				}
 			})
 			if err := appendToCSV(rows); err != nil {
@@ -235,7 +241,7 @@ func removeColumns() error {
 			if err.Error() == "EOF" {
 				break
 			}
-            fmt.Println("record with fail", record, len(record))
+			fmt.Println("1")
 			return fmt.Errorf("Error reading record from CSV: %v", err)
 		}
 
@@ -246,13 +252,16 @@ func removeColumns() error {
 		record = append(record[:13], record[14:]...)
 		record = append(record[:14], record[15:]...)
 		if err := w.Write(record); err != nil {
+			fmt.Println("2")
 			return fmt.Errorf("Error while writing record to CSV: %v", err)
 		}
 	}
 
 	if err := os.Rename(tempFilePath, filePath); err != nil {
+		fmt.Println("3")
 		return fmt.Errorf("Error replacing original CSV file: %v", err)
 	}
 
+	fmt.Println("4")
 	return nil
 }
