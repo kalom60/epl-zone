@@ -41,14 +41,13 @@ func NewServer() (*Server, error) {
 
 	err = scrape.Scrapper()
 	if err != nil {
-        fmt.Println("7", err)
 		return nil, fmt.Errorf("failed to scrape data and save to CSV: %w", err)
 	}
 
-    err = dbService.FlushPlayerTable()
-    if err != nil {
-        return nil, fmt.Errorf("failed to delete all players record from players table: %w", err)
-    }
+	err = dbService.FlushPlayerTable()
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete all players record from players table: %w", err)
+	}
 
 	err = dbService.ConvertCSVToDB()
 	if err != nil {
