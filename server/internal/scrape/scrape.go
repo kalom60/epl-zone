@@ -3,11 +3,11 @@ package scrape
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gocolly/colly"
 )
@@ -41,32 +41,36 @@ func Scrapper() error {
 		return fmt.Errorf("error fetching teams' URLs: %v", err)
 	}
 
-	errCh := make(chan error)
-	var wg sync.WaitGroup
+	// errCh := make(chan error)
+	// var wg sync.WaitGroup
 
 	for _, team := range Teams {
-		wg.Add(1)
+		// wg.Add(1)
 
-		go func(team Team) {
-			defer wg.Done()
-			fmt.Println(team.Name)
+		// go func(team Team) {
+		// 	defer wg.Done()
 
-			teamName := strings.Split(team.Name, "-Stats")[0]
-			if err := getTeamData(teamName, team.Link); err != nil {
-				errCh <- fmt.Errorf("error scraping team data for %s: %v", teamName, err)
-			}
-		}(team)
+		// 	teamName := strings.Split(team.Name, "-Stats")[0]
+		// 	if err := getTeamData(teamName, team.Link); err != nil {
+		// 		errCh <- fmt.Errorf("error scraping team data for %s: %v", teamName, err)
+		// 	}
+		// }(team)
+
+		teamName := strings.Split(team.Name, "-Stats")[0]
+		if err := getTeamData(teamName, team.Link); err != nil {
+			return fmt.Errorf("error scraping team data for %s: %v", teamName, err)
+		}
 	}
 
-	go func() {
-		wg.Wait()
-		close(errCh)
-	}()
+	// go func() {
+	// 	wg.Wait()
+	// 	close(errCh)
+	// }()
 
-	for err := range errCh {
-		log.Printf("Error: %v", err)
-		return err
-	}
+	// for err := range errCh {
+	// 	log.Printf("Error: %v", err)
+	// 	return err
+	// }
 
 	err = removeColumns()
 	if err != nil {
@@ -80,13 +84,13 @@ func ensureDataDir() error {
 	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
 		err := os.MkdirAll(dataDir, 0755)
 		if err != nil {
-			return fmt.Errorf("Error creating directory: %v", err)
+			return fmt.Errorf("error creating directory: %v", err)
 		}
 	}
 
 	file, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("Error creating CSV file: %v", err)
+		return fmt.Errorf("error creating CSV file: %v", err)
 	}
 	defer file.Close()
 
@@ -138,6 +142,7 @@ func getTeamData(teamName, link string) error {
 	c := colly.NewCollector(colly.AllowedDomains("fbref.com"))
 
 	var scrapeError error
+	time.Sleep(5 * time.Second)
 
 	c.OnHTML("table.stats_table", func(h *colly.HTMLElement) {
 		if h.Index == targetIndex {
@@ -196,7 +201,7 @@ func appendToCSV(rows [][]string) error {
 	// Open the CSV file for appending, or create it if it doesn't exist
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return fmt.Errorf("Error opening CSV file: %v", err)
+		return fmt.Errorf("error opening CSV file: %v", err)
 	}
 	defer file.Close()
 
@@ -208,7 +213,7 @@ func appendToCSV(rows [][]string) error {
 	for _, row := range rows {
 		fmt.Printf("Writing row: %v\n", row)
 		if err := writer.Write(row); err != nil {
-			return fmt.Errorf("Error writing to CSV file: %v", err)
+			return fmt.Errorf("error writing to CSV file: %v", err)
 		}
 	}
 	return nil
@@ -217,7 +222,7 @@ func appendToCSV(rows [][]string) error {
 func removeColumns() error {
 	csvfile, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("Could not open the CSV file: %v", err)
+		return fmt.Errorf("could not open the CSV file: %v", err)
 	}
 	defer csvfile.Close()
 
@@ -226,7 +231,7 @@ func removeColumns() error {
 	tempFilePath := filepath.Join(dataDir, "temp_stats.csv")
 	newfile, err := os.Create(tempFilePath)
 	if err != nil {
-		return fmt.Errorf("Error while creating temporary CSV file: %v", err)
+		return fmt.Errorf("error while creating temporary CSV file: %v", err)
 	}
 	defer newfile.Close()
 
@@ -239,7 +244,7 @@ func removeColumns() error {
 			if err.Error() == "EOF" {
 				break
 			}
-			return fmt.Errorf("Error reading record from CSV: %v", err)
+			return fmt.Errorf("error reading record from CSV: %v", err)
 		}
 
 		record = append(record[:20], record[34:]...)
@@ -249,12 +254,12 @@ func removeColumns() error {
 		record = append(record[:13], record[14:]...)
 		record = append(record[:14], record[15:]...)
 		if err := w.Write(record); err != nil {
-			return fmt.Errorf("Error while writing record to CSV: %v", err)
+			return fmt.Errorf("error while writing record to CSV: %v", err)
 		}
 	}
 
 	if err := os.Rename(tempFilePath, filePath); err != nil {
-		return fmt.Errorf("Error replacing original CSV file: %v", err)
+		return fmt.Errorf("error replacing original CSV file: %v", err)
 	}
 
 	return nil
