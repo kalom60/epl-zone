@@ -13,13 +13,13 @@ func NewPgPlayerRepository(db *sqlx.DB) PlayerRepository {
 	return &PgPlayerRepository{db: db}
 }
 
-func (r *PgPlayerRepository) GetAllPlayers() (*models.Player, error) {
-    var players models.Player
+func (r *PgPlayerRepository) GetAllPlayers() (*[]models.Player, error) {
+	var players []models.Player
 
-    err := r.db.Select(&players, "SELECT * FROM eplzone")
-    if err != nil {
-        return nil, err
-    }
+	err := r.db.Select(&players, "SELECT * FROM players")
+	if err != nil {
+		return nil, err
+	}
 
-    return &players, nil
+	return &players, nil
 }
