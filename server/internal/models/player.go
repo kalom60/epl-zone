@@ -1,19 +1,22 @@
 package models
 
+import "database/sql"
+
 type Player struct {
-	PlayerName      string  `json:"playerName" db:"player_name"`
-	Nation          string  `json:"nation" db:"nation"`
-	Position        string  `json:"position" db:"position"`
-	Age             float64 `json:"age" db:"age"`
-	MatchesPlayed   int     `json:"matchesPlayed" db:"matches_played"`
-	Starts          int     `json:"starts" db:"starts"`
-	MinutesPlayed   float64 `json:"minutesPlayed" db:"minutes_played"`
-	Goals           float64 `json:"goals" db:"goals"`
-	Assists         float64 `json:"assists" db:"assists"`
-	PenaltiesScored float64 `json:"penalitiesScored" db:"penalities_scored"`
-	YellowCards     float64 `json:"yellowCards" db:"yellow_cards"`
-	RedCards        float64 `json:"redCards" db:"red_cards"`
-	ExpectedGoals   float64 `json:"expectedGoals" db:"expected_goals"`
-	ExpectedAssists float64 `json:"expectedAssists" db:"expected_assists"`
-	TeamName        string  `json:"teamName" db:"team_name"`
+	ID              int             `json:"id" db:"id"`
+	Player          string          `json:"player" db:"player"`
+	Nation          sql.NullString  `json:"nation" db:"nation"`
+	Position        sql.NullString  `json:"position" db:"pos"`
+	Age             sql.NullFloat64 `json:"age" db:"age"`
+	MatchesPlayed   sql.NullInt64   `json:"matchesPlayed" db:"mp"`
+	Starts          sql.NullInt64   `json:"starts" db:"starts"`
+	MinutesPlayed   sql.NullFloat64 `json:"minutesPlayed" db:"min"`
+	Goals           sql.NullFloat64 `json:"goals" db:"gls"`
+	Assists         sql.NullFloat64 `json:"assists" db:"ast"`
+	PenaltiesScored sql.NullFloat64 `json:"penalitiesScored" db:"pk"`
+	YellowCards     sql.NullFloat64 `json:"yellowCards" db:"crdy"`
+	RedCards        sql.NullFloat64 `json:"redCards" db:"crdr"`
+	ExpectedGoals   sql.NullFloat64 `json:"expectedGoals" db:"xg"`
+	ExpectedAssists sql.NullFloat64 `json:"expectedAssists" db:"xag"`
+	TeamName        string          `json:"teamName" db:"team"`
 }
