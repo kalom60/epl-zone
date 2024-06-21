@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -15,7 +17,7 @@ type Service interface {
 	Health() map[string]string
 	Close() error
 	ConvertCSVToDB() error
-    FlushPlayerTable() error
+	FlushPlayerTable() error
 }
 
 type service struct {
@@ -75,14 +77,23 @@ func (s *service) Close() error {
 }
 
 func (s *service) ConvertCSVToDB() error {
-	filePath := "data/stats.csv"
-
-	_, err := os.Stat(filePath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("CSV file %s does not exist", filePath)
+	relativeFilePath := "data/stats.csv"
+	absoluteFilePath, err := filepath.Abs(relativeFilePath)
+	if err != nil {
+		return fmt.Errorf("could not determine absolute file path: %w", err)
 	}
 
-	_, err = s.db.Exec(fmt.Sprintf("COPY players FROM %s DELIMITER ',' CSV HEADER", filePath))
+	_, err = os.Stat(absoluteFilePath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("CSV file %s does not exist", absoluteFilePath)
+	}
+
+	// Escape single quotes in the file path
+	escapedFilePath := strings.ReplaceAll(absoluteFilePath, "'", "''")
+
+	query := fmt.Sprintf("COPY players (Player, Nation, Pos, Age, MP, Starts, Min, Gls, Ast, PK, CrdY, CrdR, xG, xAG, Team) FROM '%s' DELIMITER ',' CSV HEADER", escapedFilePath)
+
+	_, err = s.db.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -92,24 +103,24 @@ func (s *service) ConvertCSVToDB() error {
 
 func (s *service) CreatePlayerTable() error {
 	createTableQuery := `
-        CREATE TABLE IF NOT EXISTS players (
-            player_name VARCHAR(255) NOT NULL,
-            nation VARCHAR(255),
-            position VARCHAR(255),
-            age FLOAT,
-            matches_played INT,
-            starts INT,
-            minutes_played FLOAT,
-            goals FLOAT,
-            assists FLOAT,
-            penalities_scored FLOAT,
-            yellow_cards FLOAT,
-            red_cards FLOAT,
-            expected_goals FLOAT,
-            expected_assists FLOAT,
-            team_name VARCHAR(255),
-            PRIMARY KEY (player_name)
-        );
+	    CREATE TABLE IF NOT EXISTS players (
+        	id SERIAL PRIMARY KEY,
+        	player VARCHAR(255),
+        	nation VARCHAR(255),
+        	pos VARCHAR(255),
+        	age FLOAT,
+        	mp INT,
+        	starts INT,
+        	min FLOAT,
+        	gls FLOAT,
+        	ast FLOAT,
+        	pk FLOAT,
+        	crdy FLOAT,
+        	crdr FLOAT,
+        	xg FLOAT,
+        	xag FLOAT,
+        	team VARCHAR(255)
+    	);
     `
 	_, err := s.db.Exec(createTableQuery)
 	if err != nil {
