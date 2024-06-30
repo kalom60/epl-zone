@@ -18,7 +18,9 @@ type Server struct {
 	port          int
 	db            database.Service
 	playerRepo    repository.PlayerRepository
+	teamRepo      repository.TeamRepository
 	playerHandler handlers.PlayerHandlers
+	teamHandler   handlers.TeamHandlers
 	cronJob       cron.Jobber
 }
 
@@ -36,10 +38,14 @@ func NewServer() (*Server, error) {
 	playerRepo := repository.NewPgPlayerRepository(dbService.DB())
 	playerHandler := handlers.NewPlayerHandler(playerRepo)
 
+	teamRepo := repository.NewPgTeamRepository(dbService.DB())
+	teamHandler := handlers.NewTeamHandler(teamRepo)
+
 	cronJob := cron.NewCronJob(dbService)
 	cronJob.Start()
 
-	err = scrape.Scrapper()
+	scrape := scrape.NewScrape()
+	err = scrape.Scrape()
 	if err != nil {
 		return nil, fmt.Errorf("failed to scrape data and save to CSV: %w", err)
 	}
@@ -47,6 +53,12 @@ func NewServer() (*Server, error) {
 	err = dbService.FlushPlayerTable()
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete all players record from players table: %w", err)
+	}
+
+	teams := scrape.Teams()
+	err = teamRepo.AddTeams(teams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add teams record to teams table: %w", err)
 	}
 
 	err = dbService.ConvertCSVToDB()
@@ -58,7 +70,9 @@ func NewServer() (*Server, error) {
 		port:          port,
 		db:            dbService,
 		playerRepo:    playerRepo,
+		teamRepo:      teamRepo,
 		playerHandler: playerHandler,
+		teamHandler:   teamHandler,
 		cronJob:       cronJob,
 	}
 
