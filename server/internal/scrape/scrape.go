@@ -12,9 +12,25 @@ import (
 	"github.com/gocolly/colly"
 )
 
+type Scrapper interface {
+	Scrape() error
+	Teams() []Team
+}
+
+type scrape struct{}
+
+func NewScrape() Scrapper {
+	return &scrape{}
+}
+
+func (s *scrape) Teams() []Team {
+	return Teams
+}
+
 type Team struct {
 	Name string
 	Link string
+	Logo string
 }
 
 const (
@@ -30,7 +46,7 @@ var (
 	mu       sync.Mutex
 )
 
-func Scrapper() error {
+func (s *scrape) Scrape() error {
 	err := ensureDataDir()
 	if err != nil {
 		return fmt.Errorf("error creating data directory: %v", err)
@@ -104,8 +120,9 @@ func getTeamsUrl() error {
 
 	c.OnHTML("table.stats_table", func(h *colly.HTMLElement) {
 		if h.Index == targetIndex {
+			teams := h.ChildAttrs("img", "src")
 			links := h.ChildAttrs("a", "href")
-			filterTeamLink(&links)
+			filterTeamLink(&links, &teams)
 
 			h.Request.Abort()
 		}
@@ -122,7 +139,7 @@ func getTeamsUrl() error {
 	return nil
 }
 
-func filterTeamLink(links *[]string) {
+func filterTeamLink(links, teams *[]string) {
 	for i := 0; i < len(*links); {
 		if !strings.Contains((*links)[i], "/squads/") {
 			*links = append((*links)[:i], (*links)[i+1:]...)
@@ -130,6 +147,7 @@ func filterTeamLink(links *[]string) {
 			team := Team{
 				Name: strings.Split((*links)[i], "/")[len(strings.Split((*links)[i], "/"))-1],
 				Link: (*links)[i],
+				Logo: (*teams)[0],
 			}
 
 			Teams = append(Teams, team)
