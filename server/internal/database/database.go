@@ -50,7 +50,12 @@ func New() (Service, error) {
 
 	if err := dbInstace.CreatePlayerTable(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("failed to create database tables: %w", err)
+		return nil, fmt.Errorf("failed to create database players table: %w", err)
+	}
+
+	if err := dbInstace.CreateTeamTable(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to create database teams table: %w", err)
 	}
 
 	return dbInstace, nil
@@ -129,9 +134,25 @@ func (s *service) CreatePlayerTable() error {
 	return nil
 }
 
+func (s *service) CreateTeamTable() error {
+	createTableQuery := `
+	    CREATE TABLE IF NOT EXISTS teams(
+        	id SERIAL PRIMARY KEY,
+        	team VARCHAR(255),
+        	logo VARCHAR(255)
+    	);
+    `
+	_, err := s.db.Exec(createTableQuery)
+	if err != nil {
+		return fmt.Errorf("failed to create teams table: %w", err)
+	}
+	return nil
+}
+
 func (s *service) FlushPlayerTable() error {
 	flushTableQuery := `
         DELETE FROM players;
+        DELETE FROM teams;
     `
 	_, err := s.db.Exec(flushTableQuery)
 	if err != nil {
