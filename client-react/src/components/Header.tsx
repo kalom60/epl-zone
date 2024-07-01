@@ -41,9 +41,9 @@ const Header = () => {
           </a>
         </nav>
 
-        <div className="hidden md:block mr-6">
+        {/* <div className="hidden md:block mr-6">
           <ModeToggle />
-        </div>
+        </div>  */}
       </div>
     </header>
   );
