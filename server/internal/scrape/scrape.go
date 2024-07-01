@@ -147,12 +147,15 @@ func filterTeamLink(links, teams *[]string) {
 			team := Team{
 				Name: strings.Split((*links)[i], "/")[len(strings.Split((*links)[i], "/"))-1],
 				Link: (*links)[i],
-				Logo: (*teams)[0],
 			}
 
 			Teams = append(Teams, team)
 			i++
 		}
+	}
+
+	for idx, logo := range *teams {
+		Teams[idx].Logo = logo
 	}
 }
 
