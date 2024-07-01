@@ -34,8 +34,7 @@ const Teams = () => {
 
             return (
               <div className="my-4">
-                <img src={logo} />
-                <h1>{team.team}</h1>
+                <img src={logo} className="mx-auto" />
               </div>
             );
           })}
