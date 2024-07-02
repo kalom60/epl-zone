@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import SearchBox from "./SearchBox";
 import { motion, AnimatePresence } from "framer-motion";
 import { NavLink } from "react-router-dom";
+import { Button } from "./ui/button";
 
 type State = {
   id: string;
@@ -47,10 +48,9 @@ const Teams = () => {
             const clubUrl: string = teamName.slice(0, -1).join("-");
 
             return (
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait" key={team.id}>
                 <motion.div
                   className="my-10"
-                  key={team.id}
                   initial={{ y: 100, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -10, opacity: 0 }}
@@ -60,8 +60,12 @@ const Teams = () => {
                 >
                   <NavLink to={`/teams/${clubUrl}`}>
                     <img src={logo} className="mx-auto w-48 h-48" />
-                    <h1 className="text-center mt-3 text-1xl font-medium">
-                      {club}
+                    <h1 className="text-center mt-6 text-1xl font-medium">
+                      <Button className="relative inline-block font-medium group py-1.5 px-2.5 ">
+                        <span className="absolute inset-0 w-full h-full transition duration-400 ease-out transform translate-x-1 translate-y-1 bg-[#37003c] group-hover:-translate-x-0 group-hover:-translate-y-0"></span>
+                        <span className="absolute inset-0 w-full h-full bg-white border border-[#37003c] group-hover:bg-indigo-50"></span>
+                        <span className="relative text-[#37003c]">{club}</span>
+                      </Button>
                     </h1>
                   </NavLink>
                 </motion.div>
