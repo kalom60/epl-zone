@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import EPL from "../assets/epl.png";
 // import { ModeToggle } from "./mode-toggle";
 import { NavLink } from "react-router-dom";
+import { Search } from "lucide-react";
 
 const epllogo: string =
   "https://www.premierleague.com/resources/rebrand/v7.149.0/i/elements/pl-main-logo.png";
@@ -102,7 +103,7 @@ const Header = () => {
               href="#faqs"
               className=" duration-200 hover:text-indigo-400 cursor-pointer"
             >
-              <i className="fa fa-search px-2"></i>
+              <Search />
             </a>
           </nav>
 
