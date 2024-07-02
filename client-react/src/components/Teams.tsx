@@ -58,7 +58,7 @@ const Teams = () => {
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.8 }}
                 >
-                  <NavLink to={`/team/${clubUrl}`}>
+                  <NavLink to={`/teams/${clubUrl}`}>
                     <img src={logo} className="mx-auto w-48 h-48" />
                     <h1 className="text-center mt-3 text-1xl font-medium">
                       {club}
