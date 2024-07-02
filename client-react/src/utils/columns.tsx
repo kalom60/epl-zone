@@ -85,6 +85,11 @@ const columnConfig = [
     key: "expectedAssists",
     header: "Expected Assists",
   },
+  {
+    key: "teamName",
+    header: "Team",
+    render: (value: string) => value.replace(/-/g, " "),
+  },
 ];
 
 export const columns: ColumnDef<Data>[] = columnConfig.map((col) => ({
