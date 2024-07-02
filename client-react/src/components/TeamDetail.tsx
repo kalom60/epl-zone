@@ -68,24 +68,34 @@ const TeamDetail = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {details.map((detail: State) => (
-            <TableRow key={detail.id}>
-              <TableCell className="font-medium">{detail.player}</TableCell>
-              <TableCell>{detail.nation}</TableCell>
-              <TableCell>{detail.position}</TableCell>
-              <TableCell>{detail.age}</TableCell>
-              <TableCell>{detail.matchesPlayed}</TableCell>
-              <TableCell>{detail.starts}</TableCell>
-              <TableCell>{detail.minutesPlayed}</TableCell>
-              <TableCell>{detail.goals}</TableCell>
-              <TableCell>{detail.assists}</TableCell>
-              <TableCell>{detail.penalitiesScored}</TableCell>
-              <TableCell>{detail.yellowCards}</TableCell>
-              <TableCell>{detail.redCards}</TableCell>
-              <TableCell>{detail.expectedGoals}</TableCell>
-              <TableCell>{detail.expectedAssists}</TableCell>
-            </TableRow>
-          ))}
+          {details.map((detail: State) => {
+            let pos: string = detail.position;
+            if (pos?.length > 2) {
+              const midIndex = Math.ceil(pos?.length / 2);
+              const firstPart = pos?.substring(0, midIndex);
+              const secondPart = pos?.substring(midIndex);
+              pos = `${firstPart},${secondPart}`;
+            }
+
+            return (
+              <TableRow key={detail.id}>
+                <TableCell className="font-medium">{detail.player}</TableCell>
+                <TableCell>{detail.nation}</TableCell>
+                <TableCell>{pos}</TableCell>
+                <TableCell>{detail.age}</TableCell>
+                <TableCell>{detail.matchesPlayed}</TableCell>
+                <TableCell>{detail.starts}</TableCell>
+                <TableCell>{detail.minutesPlayed}</TableCell>
+                <TableCell>{detail.goals}</TableCell>
+                <TableCell>{detail.assists}</TableCell>
+                <TableCell>{detail.penalitiesScored}</TableCell>
+                <TableCell>{detail.yellowCards}</TableCell>
+                <TableCell>{detail.redCards}</TableCell>
+                <TableCell>{detail.expectedGoals}</TableCell>
+                <TableCell>{detail.expectedAssists}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
