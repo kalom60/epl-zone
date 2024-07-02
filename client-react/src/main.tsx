@@ -8,6 +8,7 @@ import Header from "./components/Header.tsx";
 import App from "./App.tsx";
 import Positions from "./components/Positions.tsx";
 import Nations from "./components/Nations.tsx";
+import TeamDetail from "./components/TeamDetail.tsx";
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
         element: <Teams />,
       },
       {
+        path: "team/:name",
+        element: <TeamDetail />,
+      },
+      {
         path: "nations",
         element: <Nations />,
       },
@@ -41,7 +46,7 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <RouterProvider router={router} />
     </ThemeProvider>
   </React.StrictMode>,
