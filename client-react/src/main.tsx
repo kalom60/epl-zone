@@ -8,7 +8,7 @@ import Header from "./components/Header.tsx";
 import App from "./App.tsx";
 import Positions from "./components/Positions.tsx";
 import Nations from "./components/Nations.tsx";
-import TeamDetail from "./components/TeamDetail.tsx";
+import Detail from "./components/Detail.tsx";
 
 const router = createBrowserRouter([
   {
@@ -30,7 +30,7 @@ const router = createBrowserRouter([
       },
       {
         path: "teams/:name",
-        element: <TeamDetail />,
+        element: <Detail />,
       },
       {
         path: "nations",
@@ -39,6 +39,10 @@ const router = createBrowserRouter([
       {
         path: "positions",
         element: <Positions />,
+      },
+      {
+        path: "positions/:name",
+        element: <Detail />,
       },
     ],
   },
