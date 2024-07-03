@@ -32,12 +32,13 @@ const columnConfig = [
   {
     key: "nation",
     header: "Nation",
+    render: (value: string) => value && value.split(" ")[1]
   },
   {
     key: "position",
     header: "Position",
     render: (value: string) =>
-      value.length > 3
+      value && value.length > 3
         ? `${value.substring(0, 2)},${value.substring(2)}`
         : value,
   },
